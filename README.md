@@ -24,7 +24,8 @@ require('cmdline')({
     highlight_directories = true,
     directory_hl = "Directory",
     max_col_num = 6,
-    min_col_width = 20
+    min_col_width = 20,
+    offset = 1 -- depending on 'cmdheight' you might have to change the height offset
 })
 ```
 

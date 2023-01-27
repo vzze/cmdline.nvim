@@ -7,6 +7,7 @@ opts.highlight_directories = true
 opts.directory_hl = "Directory"
 opts.max_col_num = 6
 opts.min_col_width = 20
+opts.offset = 1
 
 local util = {}
 
@@ -57,7 +58,7 @@ window.config = function(height)
         border = nil,
         style = 'minimal',
         width = vim.o.columns,
-        height = height + 1,
+        height = height + opts.offset,
         row = vim.o.lines - 2,
         col = 0
     }
