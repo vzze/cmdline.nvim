@@ -276,13 +276,6 @@ local setup = function(config)
         end
     })
 
-    vim.api.nvim_create_autocmd({ "CmdwinEnter" }, {
-        callback = function()
-            window.hide()
-            util.del_autocmd()
-        end
-    })
-
     vim.api.nvim_create_autocmd({ "CmdlineEnter" }, {
         callback = function()
             if vim.v.event.cmdtype == ':' then
