@@ -65,6 +65,7 @@ util.search_hl = vim.api.nvim_create_namespace('__ccs_hls_namespace_search___')
 util.current_selection = nil
 util.current_completions = nil
 util.disable_cmdline_change = false
+util.visual_mode = false
 
 local window = {}
 
@@ -131,6 +132,12 @@ local init = function()
         local completions = vim.fn.getcompletion(input, "cmdline")
 
         if opts.match_fuzzy and input ~= '' then
+            if input:find("'<,'>") then
+                input = input:sub(6)
+                util.visual_mode = true
+            else
+                util.visual_mode = false
+            end
             local split = vim.split(input, ' ')
             local match = split[#split]
             if match:len() >= 1 then
@@ -277,9 +284,19 @@ util.tab = function(num)
     end)
 
     local cmdline = vim.fn.getcmdline()
+
+    if util.visual_mode then
+        cmdline = "'<,'>" .. cmdline
+    end
+
     local split = vim.split(cmdline, ' ')
 
-    split[#split] = util.current_completions[util.current_selection].completion
+    if #split == 1 and util.visual_mode then
+        split[#split] = "'<,'>" .. util.current_completions[util.current_selection].completion
+    else
+        split[#split] = util.current_completions[util.current_selection].completion
+    end
+
 
     vim.fn.setcmdline(table.concat(split, ' '))
 end
@@ -329,6 +346,22 @@ local setup = function(config)
                     window.hide()
                     util.del_autocmd()
                 end)
+            end
+        end
+    })
+
+    vim.api.nvim_create_autocmd({ "WinLeave" }, {
+        callback = function()
+            if vim.api.nvim_buf_is_valid(window.buffer) then
+                vim.api.nvim_buf_delete(window.buffer, {})
+            end
+        end
+    })
+
+    vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
+        callback = function()
+            if vim.api.nvim_buf_is_valid(window.buffer) then
+                vim.api.nvim_buf_delete(window.buffer, {})
             end
         end
     })
