@@ -297,6 +297,11 @@ local setup = function(config)
 
     vim.api.nvim_create_autocmd({ "CmdwinEnter" }, {
         callback = function()
+            if util.timeout then
+                util.timeout:stop()
+                util.timeout:close()
+                util.timeout = nil
+            end
             window.hide()
             util.del_autocmd()
         end
