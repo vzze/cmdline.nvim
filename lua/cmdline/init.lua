@@ -302,8 +302,10 @@ local setup = function(config)
                 util.timeout:close()
                 util.timeout = nil
             end
-            window.hide()
-            util.del_autocmd()
+            vim.schedule(function()
+                window.hide()
+                util.del_autocmd()
+            end)
         end
     })
 
@@ -323,8 +325,10 @@ local setup = function(config)
                     util.timeout:close()
                     util.timeout = nil
                 end
-                window.hide()
-                util.del_autocmd()
+                vim.schedule(function()
+                    window.hide()
+                    util.del_autocmd()
+                end)
             end
         end
     })
