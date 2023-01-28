@@ -7,6 +7,7 @@ opts.highlight_directories = true
 opts.directory_hl = "Directory"
 opts.max_col_num = 6
 opts.min_col_width = 20
+opts.debounce_ms = 10
 opts.offset = 1
 
 local util = {}
@@ -32,6 +33,30 @@ util.del_autocmd = function()
     if util.cmdline_changed ~= nil then
         vim.api.nvim_del_autocmd(util.cmdline_changed)
         util.cmdline_changed = nil
+    end
+end
+
+util.timeout = nil
+
+util.debounce = function(callback, delay)
+    return function(...)
+        local args = ...
+
+        if util.timeout then
+            util.timeout:stop()
+            util.timeout:close()
+            util.timeout = nil
+        end
+
+        util.timeout = vim.loop.new_timer()
+        util.timeout:start(delay, 0, function()
+            vim.schedule(function()
+                callback(args)
+            end)
+            util.timeout:stop()
+            util.timeout:close()
+            util.timeout = nil
+        end)
     end
 end
 
@@ -95,8 +120,10 @@ window.refresh = function(height, clear_buffer)
 end
 
 local init = function()
-    local callback = function()
+    local callback = util.debounce(function()
+
         if util.disable_cmdline_change then
+            util.disable_cmdline_change = false
             return
         end
 
@@ -207,7 +234,7 @@ local init = function()
         end
 
         vim.api.nvim_command([[redraw]])
-    end
+    end, opts.debounce_ms)
 
     util.cmdline_changed = vim.api.nvim_create_autocmd({ 'CmdlineChanged' }, {
         callback = callback
@@ -245,7 +272,9 @@ util.tab = function(num)
 
     vim.api.nvim_command([[redraw]])
 
-    util.disable_cmdline_change = true
+    vim.schedule(function()
+        util.disable_cmdline_change = true
+    end)
 
     local cmdline = vim.fn.getcmdline()
     local split = vim.split(cmdline, ' ')
@@ -253,10 +282,6 @@ util.tab = function(num)
     split[#split] = util.current_completions[util.current_selection].completion
 
     vim.fn.setcmdline(table.concat(split, ' '))
-
-    vim.schedule(function()
-        util.disable_cmdline_change = false
-    end)
 end
 
 local setup = function(config)
@@ -288,6 +313,11 @@ local setup = function(config)
     vim.api.nvim_create_autocmd({ "CmdlineLeave" }, {
         callback = function()
             if vim.v.event.cmdtype == ':' then
+                if util.timeout then
+                    util.timeout:stop()
+                    util.timeout:close()
+                    util.timeout = nil
+                end
                 window.hide()
                 util.del_autocmd()
             end
