@@ -141,6 +141,7 @@ local init = function()
             local split = vim.split(input, ' ')
             local match = split[#split]
             if match:len() >= 1 then
+                match = string.gsub(match, "/", { ["/"] = "\\" })
                 completions = vim.fn.matchfuzzy(completions, match)
             end
         end
