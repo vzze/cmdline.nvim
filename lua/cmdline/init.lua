@@ -2,13 +2,16 @@ local opts = {}
 
 opts.match_fuzzy = true
 opts.highlight_selection = true
-opts.selection_hl = "Search"
+opts.selection_hl = "PmenuSel"
 opts.highlight_directories = true
 opts.directory_hl = "Directory"
 opts.max_col_num = 6
 opts.min_col_width = 20
 opts.debounce_ms = 10
 opts.offset = 1
+opts.default_hl = "Pmenu"
+opts.highlight_substr = true
+opts.substr_hl = "Search"
 
 local util = {}
 
@@ -131,6 +134,9 @@ local init = function()
         local input = vim.fn.getcmdline()
         local completions = vim.fn.getcompletion(input, "cmdline")
 
+        local split = vim.split(input, ' ')
+        local match = split[#split]
+
         if opts.match_fuzzy and input ~= '' then
             if input:find("'<,'>") then
                 input = input:sub(6)
@@ -138,8 +144,7 @@ local init = function()
             else
                 util.visual_mode = false
             end
-            local split = vim.split(input, ' ')
-            local match = split[#split]
+
             if match:len() >= 1 then
                 match = string.gsub(match, "/", { ["/"] = "\\" })
                 completions = vim.fn.matchfuzzy(completions, match)
@@ -209,22 +214,46 @@ local init = function()
                     completion = completions[i].completion
                 }
 
-                if i == util.current_selection and opts.highlight_selection then
-                    vim.highlight.range(
-                        window.buffer,
-                        util.search_hl,
-                        opts.selection_hl,
-                        { line, col * col_width },
-                        { line, end_col },
-                        {}
-                    )
-                end
-
                 if completions[i].is_dir and opts.highlight_directories then
                     vim.highlight.range(
                         window.buffer,
                         util.dir_hl,
                         opts.directory_hl,
+                        { line, col * col_width },
+                        { line, end_col },
+                        {}
+                    )
+                else
+                    vim.highlight.range(
+                        window.buffer,
+                        util.dir_hl,
+                        opts.default_hl,
+                        { line, col * col_width },
+                        { line, end_col },
+                        {}
+                    )
+                end
+                if opts.highlight_substr and input ~= '' then
+                    if match:len() >= 1 then
+                        local x, y = string.find(completions[i].display, match)
+                        if x ~= nil and y ~= nil then
+                            vim.highlight.range(
+                                window.buffer,
+                                util.dir_hl,
+                                opts.substr_hl,
+                                { line, col * col_width + x - 1 },
+                                { line, col * col_width + y },
+                                {}
+                            )
+                        end
+                    end
+                end
+
+                if i == util.current_selection and opts.highlight_selection then
+                    vim.highlight.range(
+                        window.buffer,
+                        util.search_hl,
+                        opts.selection_hl,
                         { line, col * col_width },
                         { line, end_col },
                         {}
