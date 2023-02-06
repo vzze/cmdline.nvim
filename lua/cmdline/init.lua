@@ -11,7 +11,7 @@ opts.debounce_ms = 10
 opts.offset = 1
 opts.default_hl = "Pmenu"
 opts.highlight_substr = true
-opts.substr_hl = "Search"
+opts.substr_hl = "LineNr"
 
 local util = {}
 
@@ -65,6 +65,7 @@ end
 
 util.dir_hl = vim.api.nvim_create_namespace('__ccs_hls_namespace_directory___')
 util.search_hl = vim.api.nvim_create_namespace('__ccs_hls_namespace_search___')
+util.substr_hl = vim.api.nvim_create_namespace('__ccs_hls_namespace_substr___')
 util.current_selection = nil
 util.current_completions = nil
 util.disable_cmdline_change = false
@@ -221,7 +222,7 @@ local init = function()
                         opts.directory_hl,
                         { line, col * col_width },
                         { line, end_col },
-                        {}
+                        { priority = 150 }
                     )
                 else
                     vim.highlight.range(
@@ -230,20 +231,21 @@ local init = function()
                         opts.default_hl,
                         { line, col * col_width },
                         { line, end_col },
-                        {}
+                        { priority = 150 }
                     )
                 end
+
                 if opts.highlight_substr and input ~= '' then
                     if match:len() >= 1 then
                         local x, y = string.find(completions[i].display, match)
                         if x ~= nil and y ~= nil then
                             vim.highlight.range(
                                 window.buffer,
-                                util.dir_hl,
+                                util.substr_hl,
                                 opts.substr_hl,
                                 { line, col * col_width + x - 1 },
                                 { line, col * col_width + y },
-                                {}
+                                { priority = 150 }
                             )
                         end
                     end
@@ -256,7 +258,7 @@ local init = function()
                         opts.selection_hl,
                         { line, col * col_width },
                         { line, end_col },
-                        {}
+                        { priority = 200 }
                     )
                 end
 
@@ -304,7 +306,8 @@ util.tab = function(num)
         util.search_hl,
         opts.selection_hl,
         util.current_completions[util.current_selection].start,
-        util.current_completions[util.current_selection].finish
+        util.current_completions[util.current_selection].finish,
+        { priority = 200 }
     )
 
     vim.api.nvim_command([[redraw]])
