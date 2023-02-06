@@ -28,7 +28,7 @@ require('cmdline')({
     debounce_ms = 10,
     default_hl = "Pmenu",
     highlight_substr = true,
-    substr_hl = "Search"
+    substr_hl = "LineNr"
     offset = 1 -- depending on 'cmdheight' you might have to change the height offset
 })
 ```
