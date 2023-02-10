@@ -1,17 +1,21 @@
 local opts = {}
 
 opts.match_fuzzy = true
+
+opts.default_hl = "Pmenu"
+
 opts.highlight_selection = true
-opts.selection_hl = "PmenuSel"
 opts.highlight_directories = true
+opts.highlight_substr = true
+
+opts.selection_hl = "PmenuSel"
 opts.directory_hl = "Directory"
+opts.substr_hl = "LineNr"
+
 opts.max_col_num = 6
 opts.min_col_width = 20
 opts.debounce_ms = 10
 opts.offset = 1
-opts.default_hl = "Pmenu"
-opts.highlight_substr = true
-opts.substr_hl = "LineNr"
 
 local util = {}
 
@@ -63,11 +67,13 @@ util.debounce = function(callback, delay)
     end
 end
 
-util.dir_hl = vim.api.nvim_create_namespace('__ccs_hls_namespace_directory___')
-util.search_hl = vim.api.nvim_create_namespace('__ccs_hls_namespace_search___')
-util.substr_hl = vim.api.nvim_create_namespace('__ccs_hls_namespace_substr___')
+util.dir_ns = vim.api.nvim_create_namespace('__ccs_hls_namespace_directory___')
+util.search_ns = vim.api.nvim_create_namespace('__ccs_hls_namespace_search___')
+util.substr_ns = vim.api.nvim_create_namespace('__ccs_hls_namespace_substr___')
+
 util.current_selection = nil
 util.current_completions = nil
+
 util.disable_cmdline_change = false
 util.visual_mode = false
 
@@ -218,7 +224,7 @@ local init = function()
                 if completions[i].is_dir and opts.highlight_directories then
                     vim.highlight.range(
                         window.buffer,
-                        util.dir_hl,
+                        util.dir_ns,
                         opts.directory_hl,
                         { line, col * col_width },
                         { line, end_col },
@@ -227,7 +233,7 @@ local init = function()
                 else
                     vim.highlight.range(
                         window.buffer,
-                        util.dir_hl,
+                        util.dir_ns,
                         opts.default_hl,
                         { line, col * col_width },
                         { line, end_col },
@@ -237,11 +243,11 @@ local init = function()
 
                 if opts.highlight_substr and input ~= '' then
                     if match:len() >= 1 then
-                        local x, y = string.find(completions[i].display, match)
+                        local x, y = string.find(completions[i].display, match, 1, true)
                         if x ~= nil and y ~= nil then
                             vim.highlight.range(
                                 window.buffer,
-                                util.substr_hl,
+                                util.substr_ns,
                                 opts.substr_hl,
                                 { line, col * col_width + x - 1 },
                                 { line, col * col_width + y },
@@ -254,7 +260,7 @@ local init = function()
                 if i == util.current_selection and opts.highlight_selection then
                     vim.highlight.range(
                         window.buffer,
-                        util.search_hl,
+                        util.search_ns,
                         opts.selection_hl,
                         { line, col * col_width },
                         { line, end_col },
@@ -299,11 +305,11 @@ util.tab = function(num)
         end
     end
 
-    vim.api.nvim_buf_clear_namespace(window.buffer, util.search_hl, 0, -1)
+    vim.api.nvim_buf_clear_namespace(window.buffer, util.search_ns, 0, -1)
 
     vim.highlight.range(
         window.buffer,
-        util.search_hl,
+        util.search_ns,
         opts.selection_hl,
         util.current_completions[util.current_selection].start,
         util.current_completions[util.current_selection].finish,
