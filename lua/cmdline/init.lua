@@ -141,17 +141,17 @@ local init = function()
         local input = vim.fn.getcmdline()
         local completions = vim.fn.getcompletion(input, "cmdline")
 
+        if input:find("'<,'>") then
+            input = input:sub(6)
+            util.visual_mode = true
+        else
+            util.visual_mode = false
+        end
+
         local split = vim.split(input, ' ')
         local match = split[#split]
 
         if opts.match_fuzzy and input ~= '' then
-            if input:find("'<,'>") then
-                input = input:sub(6)
-                util.visual_mode = true
-            else
-                util.visual_mode = false
-            end
-
             if match:len() >= 1 then
                 match = string.gsub(match, "/", { ["/"] = "\\" })
                 completions = vim.fn.matchfuzzy(completions, match)
