@@ -18,18 +18,28 @@ Install `vzze/cmdline.nvim` with the plugin manager of your choice.
 ## Options
 ```lua
 require('cmdline')({
-    match_fuzzy = true,
-    highlight_selection = true,
-    selection_hl = "PmenuSel",
-    highlight_directories = true,
-    directory_hl = "Directory",
-    max_col_num = 6,
-    min_col_width = 20,
-    debounce_ms = 10,
-    default_hl = "Pmenu",
-    highlight_substr = true,
-    substr_hl = "LineNr"
-    offset = 1 -- depending on 'cmdheight' you might have to change the height offset
+    window = {
+        matchFuzzy = true,
+        offset     = 1, -- depending on 'cmdheight' you might need to offset
+        debounceMs = 10
+    },
+
+    hl = {
+        default   = "Pmenu",
+        selection = "PmenuSel",
+        directory = "Directory",
+        substr    = "LineNr"
+    },
+
+    column = {
+        maxNumber = 6,
+        minWidth  = 20
+    },
+
+    binds = {
+        next = "<Tab>",
+        back = "<S-Tab>"
+    }
 })
 ```
 

@@ -1,374 +1,128 @@
-local opts = {}
+local config = require("cmdline.config")
+local util   = require("cmdline.util")
+local window = require("cmdline.window")
+local binds  = require("cmdline.binds")
 
-opts.match_fuzzy = true
+local stopListening = function()
+    util.stopDebounce()
 
-opts.default_hl = "Pmenu"
+    vim.schedule(function()
+        window.hide()
+        util.resetCmdlineCallback()
+    end)
+end
 
-opts.highlight_selection = true
-opts.highlight_directories = true
-opts.highlight_substr = true
-
-opts.selection_hl = "PmenuSel"
-opts.directory_hl = "Directory"
-opts.substr_hl = "LineNr"
-
-opts.max_col_num = 6
-opts.min_col_width = 20
-opts.debounce_ms = 10
-opts.offset = 1
-
-local util = {}
-
-util.cmdline_changed = nil
-
-util.col_width = function()
-    local col_width
-
-    for i = 1, opts.max_col_num do
-        local test_width = math.floor(tonumber(vim.o.columns, 10) / i)
-        if test_width <= opts.min_col_width then
-            return col_width
-        else
-            col_width = test_width
-        end
+local updateCmdLine = util.debounce(function()
+    if binds.disableUpdate then
+        binds.disableUpdate = false
+        return true
     end
 
-    return col_width
-end
+    local input = vim.fn.getcmdline()
+    local completions = vim.fn.getcompletion(input, "cmdline")
 
-util.del_autocmd = function()
-    if util.cmdline_changed ~= nil then
-        vim.api.nvim_del_autocmd(util.cmdline_changed)
-        util.cmdline_changed = nil
-    end
-end
+    binds.currentCompletions = {}
+    binds.currentSelection = -1
 
-util.timeout = nil
-
-util.debounce = function(callback, delay)
-    return function(...)
-        local args = ...
-
-        if util.timeout then
-            util.timeout:stop()
-            util.timeout:close()
-            util.timeout = nil
-        end
-
-        util.timeout = vim.loop.new_timer()
-        util.timeout:start(delay, 0, function()
-            vim.schedule(function()
-                callback(args)
-            end)
-            util.timeout:stop()
-            util.timeout:close()
-            util.timeout = nil
-        end)
-    end
-end
-
-util.dir_ns = vim.api.nvim_create_namespace('__ccs_hls_namespace_directory___')
-util.search_ns = vim.api.nvim_create_namespace('__ccs_hls_namespace_search___')
-util.substr_ns = vim.api.nvim_create_namespace('__ccs_hls_namespace_substr___')
-
-util.current_selection = nil
-util.current_completions = nil
-
-util.disable_cmdline_change = false
-util.visual_mode = false
-
-local window = {}
-
-window.buffer = nil
-window.wh = nil
-
-window.hide = function()
-    if vim.api.nvim_win_is_valid(window.wh) then
-        vim.api.nvim_win_hide(window.wh)
-    end
-end
-
-window.config = function(height)
-    return {
-        relative = "editor",
-        border = nil,
-        style = 'minimal',
-        width = vim.o.columns,
-        height = height + opts.offset,
-        row = vim.o.lines - 2,
-        col = 0
-    }
-end
-
-window.init = function()
-    window.buffer = vim.api.nvim_create_buf(false, true)
-    window.wh = vim.api.nvim_open_win(window.buffer, false, window.config(1))
-    window.hide()
-end
-
-window.refresh = function(height, clear_buffer)
-    if vim.api.nvim_buf_is_valid(window.buffer) == false then
-        window.buffer = vim.api.nvim_create_buf(false, true)
-    end
-
-    if vim.api.nvim_win_is_valid(window.wh) == false then
-        window.wh = vim.api.nvim_open_win(window.buffer, false, window.config(height))
+    if input:find("'<,'>") then
+        input = input:sub(6)
+        binds.visualMode = true
     else
-        vim.api.nvim_win_set_config(window.wh, window.config(height))
+        binds.visualMode = false
     end
 
-    if clear_buffer then
-        local tbl = {}
-
-        for _ = 1, height do
-            tbl[#tbl + 1] = (" "):rep(tonumber(vim.o.columns, 10))
-        end
-
-        vim.api.nvim_buf_set_lines(window.buffer, 0, height, false, tbl)
+    if config.opts.window.matchFuzzy then
+        completions = util.matchFuzzy(input, completions)
     end
 
-    vim.api.nvim_command([[redraw]])
-end
-
-local init = function()
-    local callback = util.debounce(function()
-
-        if util.disable_cmdline_change then
-            util.disable_cmdline_change = false
-            return
-        end
-
-        local input = vim.fn.getcmdline()
-        local completions = vim.fn.getcompletion(input, "cmdline")
-
-        if input:find("'<,'>") then
-            input = input:sub(6)
-            util.visual_mode = true
-        else
-            util.visual_mode = false
-        end
-
-        local split = vim.split(input, ' ')
-        local match = split[#split]
-
-        if opts.match_fuzzy and input ~= '' then
-            if match:len() >= 1 then
-                match = string.gsub(match, "/", { ["/"] = "\\" })
-                completions = vim.fn.matchfuzzy(completions, match)
-            end
-        end
-
-        local height = math.floor(vim.o.lines * 0.3)
-        local col_width = util.col_width()
-        local columns = math.floor(tonumber(vim.o.columns, 10) / col_width)
-
-        completions = vim.tbl_map(function(el)
-            local is_directory = vim.fn.isdirectory(vim.fn.fnamemodify(el, ":p")) == 1
-            local mod = vim.fn.fnamemodify(el, ":p:t")
-
-            local disp
-
-            if mod == "" then
-                disp = vim.fn.fnamemodify(el, ":p:h:t")
-            else
-                disp = mod
-            end
-
-            if string.len(disp) >= col_width then
-                disp = string.sub(disp, 1, col_width - 5) .. "..."
-            end
-
-            return {
-                display = disp,
-                completion = el,
-                is_dir = is_directory
-            }
-        end, completions) or {}
-
-        window.refresh(height, true)
-
-        util.current_completions = {}
-        util.current_selection = -1
-
-        if vim.tbl_isempty(completions) then
-            window.hide()
-            return
-        end
-
-        local true_height = #completions
-
-        local i = 1
-        for line = 0, height - 1 do
-            for col = 0, columns - 1 do
-                if i > #completions then
-                    break
-                end
-
-                local end_col = col * col_width + string.len(completions[i].display)
-
-                if end_col > tonumber(vim.o.columns, 10) then
-                    true_height = true_height + 1
-                    break
-                end
-
-                vim.api.nvim_buf_set_text(window.buffer, line, col * col_width, line, end_col, {
-                    completions[i].display
-                })
-
-                util.current_completions[i] = {
-                    start  = { line, col * col_width },
-                    finish = { line, end_col },
-                    completion = completions[i].completion
-                }
-
-                if completions[i].is_dir and opts.highlight_directories then
-                    vim.highlight.range(
-                        window.buffer,
-                        util.dir_ns,
-                        opts.directory_hl,
-                        { line, col * col_width },
-                        { line, end_col },
-                        { priority = 150 }
-                    )
-                else
-                    vim.highlight.range(
-                        window.buffer,
-                        util.dir_ns,
-                        opts.default_hl,
-                        { line, col * col_width },
-                        { line, end_col },
-                        { priority = 150 }
-                    )
-                end
-
-                if opts.highlight_substr and input ~= '' then
-                    if match:len() >= 1 then
-                        local x, y = string.find(completions[i].display, match, 1, true)
-                        if x ~= nil and y ~= nil then
-                            vim.highlight.range(
-                                window.buffer,
-                                util.substr_ns,
-                                opts.substr_hl,
-                                { line, col * col_width + x - 1 },
-                                { line, col * col_width + y },
-                                { priority = 150 }
-                            )
-                        end
-                    end
-                end
-
-                if i == util.current_selection and opts.highlight_selection then
-                    vim.highlight.range(
-                        window.buffer,
-                        util.search_ns,
-                        opts.selection_hl,
-                        { line, col * col_width },
-                        { line, end_col },
-                        { priority = 200 }
-                    )
-                end
-
-                i = i + 1
-            end
-        end
-
-        true_height = math.ceil(true_height / math.floor(tonumber(vim.o.columns, 10) / col_width))
-
-        if true_height < height then
-            window.refresh(true_height, false)
-        end
-
-        vim.api.nvim_command([[redraw]])
-    end, opts.debounce_ms)
-
-    util.cmdline_changed = vim.api.nvim_create_autocmd({ 'CmdlineChanged' }, {
-        callback = callback
-    })
-
-    callback()
-end
-
-util.tab = function(num)
-    if vim.tbl_isempty(util.current_completions) then
-        util.current_selection = 1
+    if vim.tbl_isempty(completions) then
+        window.hide()
         return
     end
 
-    if util.current_selection == -1 then
-        util.current_selection = 1
-    else
-        util.current_selection = util.current_selection + num
-        if util.current_selection > #util.current_completions then
-            util.current_selection = 1
-        elseif util.current_selection == 0 then
-            util.current_selection = #util.current_completions
+    local colWidth = util.getColWidth(config.opts.column)
+    local columns  = math.floor(tonumber(vim.o.columns, 10) / colWidth)
+    local height   = util.getHeight(math.floor(#completions / columns))
+
+    window.refresh(height, config.opts.window.offset)
+
+    completions = util.resizeTable(completions, columns * height)
+    completions = util.mapCompletions(completions, colWidth)
+
+    window.clearBuffer(height)
+
+    local i = 1
+
+    for line = 0, height - 1 do
+        for column = 0, columns - 1 do
+            if i > #completions then
+                break
+            end
+
+            local endCol = column * colWidth + string.len(completions[i].display)
+
+            if endCol > tonumber(vim.o.columns, 10) then
+                break
+            end
+
+            vim.api.nvim_buf_set_text(window.buffer, line, column * colWidth, line, endCol, {
+                completions[i].display
+            })
+
+            if completions[i].isDirectory and config.opts.hl.directory then
+                window.hl.default(
+                    line, column, colWidth, endCol,
+                    config.opts.hl.directory
+                )
+            else
+                window.hl.default(
+                    line, column, colWidth, endCol,
+                    config.opts.hl.default
+                )
+            end
+
+            if input ~= "" then
+                window.hl.substr(
+                    line,
+                    column,
+                    colWidth,
+                    util.currentMatch,
+                    completions[i].display,
+                    config.opts.hl.substr
+                )
+            end
+
+            binds.currentCompletions[i] = {
+                start  = { line, column * colWidth },
+                finish = { line, endCol },
+                completion = completions[i].completion
+            }
+
+            i = i + 1
         end
     end
-
-    vim.api.nvim_buf_clear_namespace(window.buffer, util.search_ns, 0, -1)
-
-    vim.highlight.range(
-        window.buffer,
-        util.search_ns,
-        opts.selection_hl,
-        util.current_completions[util.current_selection].start,
-        util.current_completions[util.current_selection].finish,
-        { priority = 200 }
-    )
-
-    vim.api.nvim_command([[redraw]])
 
     vim.schedule(function()
-        util.disable_cmdline_change = true
+        vim.cmd([[redraw]])
     end)
+end, config.opts.window.debounceMs)
 
-    local cmdline = vim.fn.getcmdline()
+local setup = function(cfg)
+    config.user.setOpts(cfg)
 
-    if util.visual_mode then
-        cmdline = "'<,'>" .. cmdline
-    end
+    window.init(config.opts.window.offset)
 
-    local split = vim.split(cmdline, ' ')
-
-    if #split == 1 and util.visual_mode then
-        split[#split] = "'<,'>" .. util.current_completions[util.current_selection].completion
-    else
-        split[#split] = util.current_completions[util.current_selection].completion
-    end
-
-
-    vim.fn.setcmdline(table.concat(split, ' '))
-end
-
-local setup = function(config)
-    config = config or {}
-    for key, value in pairs(config) do
-        opts[key] = value
-    end
-
-    window.init()
-
-    vim.keymap.set('c', "<Tab>", function() util.tab(1) end)
-    vim.keymap.set('c', "<S-Tab>", function() util.tab(-1) end)
+    binds.init(config, window)
 
     vim.api.nvim_create_autocmd({ "CmdwinEnter" }, {
-        callback = function()
-            if util.timeout then
-                util.timeout:stop()
-                util.timeout:close()
-                util.timeout = nil
-            end
-            vim.schedule(function()
-                window.hide()
-                util.del_autocmd()
-            end)
-        end
+        callback = function() stopListening() end
     })
 
     vim.api.nvim_create_autocmd({ "CmdlineEnter" }, {
         callback = function()
             if vim.v.event.cmdtype == ':' then
-                init()
+                updateCmdLine()
+                util.setCmdlineCallback(updateCmdLine)
             end
         end
     })
@@ -376,15 +130,7 @@ local setup = function(config)
     vim.api.nvim_create_autocmd({ "CmdlineLeave" }, {
         callback = function()
             if vim.v.event.cmdtype == ':' then
-                if util.timeout then
-                    util.timeout:stop()
-                    util.timeout:close()
-                    util.timeout = nil
-                end
-                vim.schedule(function()
-                    window.hide()
-                    util.del_autocmd()
-                end)
+                stopListening()
             end
         end
     })
