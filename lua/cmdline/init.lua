@@ -12,7 +12,7 @@ local stopListening = function()
     end)
 end
 
-local updateCmdLine = util.debounce(function()
+local redrawCmdline = function()
     if binds.disableUpdate then
         binds.disableUpdate = false
         return true
@@ -105,7 +105,7 @@ local updateCmdLine = util.debounce(function()
     vim.schedule(function()
         vim.cmd([[redraw]])
     end)
-end, config.opts.window.debounceMs)
+end
 
 local setup = function(cfg)
     config.user.setOpts(cfg)
@@ -114,6 +114,11 @@ local setup = function(cfg)
 
     binds.init(config, window)
 
+    local updateCmdline = util.debounce(
+        redrawCmdline,
+        config.opts.window.debounceMs
+    )
+
     vim.api.nvim_create_autocmd({ "CmdwinEnter" }, {
         callback = function() stopListening() end
     })
@@ -121,8 +126,8 @@ local setup = function(cfg)
     vim.api.nvim_create_autocmd({ "CmdlineEnter" }, {
         callback = function()
             if vim.v.event.cmdtype == ':' then
-                updateCmdLine()
-                util.setCmdlineCallback(updateCmdLine)
+                updateCmdline()
+                util.setCmdlineCallback(updateCmdline)
             end
         end
     })
