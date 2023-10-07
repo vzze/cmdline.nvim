@@ -30,7 +30,7 @@ config.user = {}
 config.user.setOptsGroup = function(cfg, group)
     if cfg[group] then
         for key, value in pairs(cfg[group]) do
-            cfg.opts[group][key] = value
+            config.opts[group][key] = value
         end
     end
 end
