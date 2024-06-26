@@ -41,7 +41,7 @@ local redrawCmdline = function()
     end
 
     local colWidth = util.getColWidth(config.opts.column)
-    local columns  = math.floor(tonumber(vim.o.columns, 10) / colWidth)
+    local columns  = math.floor(vim.o.columns / colWidth)
     local height   = util.getHeight(math.floor(#completions / columns))
 
     window.refresh(height, config.opts.window.offset)
@@ -61,7 +61,7 @@ local redrawCmdline = function()
 
             local endCol = column * colWidth + string.len(completions[i].display)
 
-            if endCol > tonumber(vim.o.columns, 10) then
+            if endCol > vim.o.columns then
                 break
             end
 

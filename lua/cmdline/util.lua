@@ -16,7 +16,7 @@ util.debounce = function(callback, delay)
 
         util.stopDebounce()
 
-        util.timeout = vim.loop.new_timer()
+        util.timeout = vim.uv.new_timer()
 
         util.timeout:start(delay, 0, function()
             vim.schedule(function()
@@ -33,7 +33,7 @@ util.getColWidth = function(column)
 
     for i = 1, column.maxNumber do
         local testWidth = math.floor(
-            tonumber(vim.o.columns, 10) / i
+            vim.o.columns / i
         )
 
         if testWidth <= column.minWidth then
@@ -80,7 +80,9 @@ util.matchFuzzy = function(input, completions)
         return completions
     end
 
-    match = string.gsub(match, "/", { ["/"] = "\\" })
+    if vim.fn.has("win32") == 1 then
+        match = string.gsub(match, "/", { ["/"] = "\\" })
+    end
 
     return vim.fn.matchfuzzy(completions, match)
 end

@@ -61,7 +61,7 @@ window.clearBuffer = function(height)
     local tbl = {}
 
     for _ = 1, height do
-        tbl[#tbl + 1] = (" "):rep(tonumber(vim.o.columns, 10))
+        tbl[#tbl + 1] = (" "):rep(vim.o.columns)
     end
 
     vim.api.nvim_buf_set_lines(
