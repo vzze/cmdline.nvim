@@ -1,5 +1,5 @@
 # cmdline.nvim
-cmdline.nvim brings [Helix](https://github.com/helix-editor/helix)'s command-line to Neovim
+cmdline.nvim is a wildmenu replacement which brings [Helix](https://github.com/helix-editor/helix)'s command-line to Neovim
 
 <p align="center">
     <img src="https://raw.githubusercontent.com/vzze/cmdline.nvim/main/preview.png">
