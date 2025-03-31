@@ -81,7 +81,7 @@ window.ns = {
 
 window.hl = {
     default = function(line, col, colWidth, endCol, defaultHl)
-        vim.highlight.range(
+        vim.hl.range(
             window.buffer,
             window.ns.directory,
             defaultHl,
@@ -101,7 +101,7 @@ window.hl = {
             return
         end
 
-        vim.highlight.range(
+        vim.hl.range(
             window.buffer,
             window.ns.substr,
             substrHl,
@@ -115,7 +115,7 @@ window.hl = {
             return
         end
 
-        vim.highlight.range(
+        vim.hl.range(
             window.buffer,
             window.ns.search,
             selectionHl,
