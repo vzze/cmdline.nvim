@@ -1,4 +1,5 @@
 # cmdline.nvim
+
 cmdline.nvim is a wildmenu replacement which brings [Helix](https://github.com/helix-editor/helix)'s command-line to Neovim
 
 <p align="center">
@@ -16,12 +17,17 @@ cmdline.nvim is a wildmenu replacement which brings [Helix](https://github.com/h
 Install `vzze/cmdline.nvim` with the plugin manager of your choice.
 
 ## Options
+
 ```lua
-require('cmdline')({
+require('cmdline').setup({
+    cmdtype = ":", -- you can also add / and ? by using ":/?"
+                   -- as a string
+
     window = {
         matchFuzzy = true,
-        offset     = 1, -- depending on 'cmdheight' you might need to offset
-        debounceMs = 10
+        offset     = 1,    -- depending on 'cmdheight' you might need to offset
+        debounceMs = 10    -- the lower the number the more responsive however
+                           -- more resource intensive
     },
 
     hl = {
@@ -44,6 +50,7 @@ require('cmdline')({
 ```
 
 # Acknowledgements
+
 > [smolck/command-completion.nvim](https://github.com/smolck/command-completion.nvim) for doing most of the dirty work
 
 > [Helix](https://github.com/helix-editor/helix) for having a cool command-line
