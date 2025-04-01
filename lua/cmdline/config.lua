@@ -1,6 +1,8 @@
 local config = {}
 
 config.opts = {
+    cmdtype = ":",
+
     window = {
         matchFuzzy = true,
         offset     = 1,
@@ -38,6 +40,10 @@ end
 config.user.setOpts = function(cfg)
     if not cfg then
         return
+    end
+
+    if cfg.cmdtype then
+        config.opts.cmdtype = cfg.cmdtype
     end
 
     config.user.setOptsGroup(cfg, "window")

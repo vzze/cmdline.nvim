@@ -125,17 +125,24 @@ local setup = function(cfg)
 
     vim.api.nvim_create_autocmd({ "CmdlineEnter" }, {
         callback = function()
-            if vim.v.event.cmdtype == ':' then
+            if string.find(config.opts.cmdtype, vim.v.event.cmdtype) then
+                binds.disabled = false
+
                 updateCmdline()
                 util.setCmdlineCallback(updateCmdline)
+            else
+                binds.disabled = true
             end
         end
     })
 
     vim.api.nvim_create_autocmd({ "CmdlineLeave" }, {
         callback = function()
-            if vim.v.event.cmdtype == ':' then
+            if string.find(config.opts.cmdtype, vim.v.event.cmdtype) then
+                binds.disabled = false
                 stopListening()
+            else
+                binds.disabled = true
             end
         end
     })
@@ -157,4 +164,7 @@ local setup = function(cfg)
     })
 end
 
-return setup
+return {
+    cfg = config,
+    setup = setup
+}

@@ -6,6 +6,7 @@ binds.visualMode = false
 binds.disableUpdate = false
 binds.windowRef = nil
 binds.configRef = nil
+binds.disabled = false
 
 binds.incrementSelection = function(num)
     if binds.currentSelection == -1 then
@@ -44,6 +45,10 @@ binds.updateCmdline = function()
 end
 
 binds.update = function(num)
+    if binds.disabled then
+        return
+    end
+
     if vim.tbl_isempty(binds.currentCompletions) then
         binds.currentSelection = 1
         return
