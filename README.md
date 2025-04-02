@@ -8,7 +8,7 @@ cmdline.nvim is a wildmenu replacement which brings [Helix](https://github.com/h
 
 # Requirements
 
-* Neovim 0.8.2 or later
+* Neovim 0.11.0 or later
 
 # Setup
 
