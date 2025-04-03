@@ -81,7 +81,7 @@ local redrawCmdline = function()
                 )
             end
 
-            if input ~= "" then
+            if input ~= "" and config.opts.window.matchFuzzy then
                 window.hl.substr(
                     line,
                     column,
