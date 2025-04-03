@@ -1,170 +1,45 @@
-local config = require("cmdline.config")
-local util   = require("cmdline.util")
-local window = require("cmdline.window")
-local binds  = require("cmdline.binds")
+---@diagnostic disable: undefined-field
+---@diagnostic disable: need-check-nil
 
-local stopListening = function()
-    util.stopDebounce()
+local cmdline = nil
 
-    vim.schedule(function()
-        window.hide()
-        util.resetCmdlineCallback()
-    end)
-end
-
-local redrawCmdline = function()
-    if binds.disableUpdate then
-        binds.disableUpdate = false
-        return true
-    end
-
-    local input = vim.fn.getcmdline()
-    local completions = vim.fn.getcompletion(input, "cmdline")
-
-    binds.currentCompletions = {}
-    binds.currentSelection = -1
-
-    if input:find("'<,'>") then
-        input = input:sub(6)
-        binds.visualMode = true
-    else
-        binds.visualMode = false
-    end
-
-    if config.opts.window.matchFuzzy then
-        completions = util.matchFuzzy(input, completions)
-    end
-
-    if vim.tbl_isempty(completions) then
-        window.hide()
-        return
-    end
-
-    local colWidth = util.getColWidth(config.opts.column)
-    local columns  = math.floor(vim.o.columns / colWidth)
-    local height   = util.getHeight(math.floor(#completions / columns))
-
-    window.refresh(height, config.opts.window.offset)
-
-    completions = util.resizeTable(completions, columns * height)
-    completions = util.mapCompletions(completions, colWidth)
-
-    window.clearBuffer(height)
-
-    local i = 1
-
-    for line = 0, height - 1 do
-        for column = 0, columns - 1 do
-            if i > #completions then
-                break
-            end
-
-            local endCol = column * colWidth + string.len(completions[i].display)
-
-            if endCol > vim.o.columns then
-                break
-            end
-
-            vim.api.nvim_buf_set_text(window.buffer, line, column * colWidth, line, endCol, {
-                completions[i].display
-            })
-
-            if completions[i].isDirectory and config.opts.hl.directory then
-                window.hl.default(
-                    line, column, colWidth, endCol,
-                    config.opts.hl.directory
-                )
-            else
-                window.hl.default(
-                    line, column, colWidth, endCol,
-                    config.opts.hl.default
-                )
-            end
-
-            if input ~= "" and config.opts.window.matchFuzzy then
-                window.hl.substr(
-                    line,
-                    column,
-                    colWidth,
-                    util.currentMatch,
-                    completions[i].display,
-                    config.opts.hl.substr
-                )
-            end
-
-            binds.currentCompletions[i] = {
-                start  = { line, column * colWidth },
-                finish = { line, endCol },
-                completion = completions[i].completion
-            }
-
-            i = i + 1
-        end
-    end
-
-    vim.schedule(function()
-        vim.cmd([[redraw]])
-    end)
+local loadPlugin = function(cfg)
+    cmdline = require("cmdline.cmdline")
+    cmdline.init(cfg)
 end
 
 local setup = function(cfg)
-    config.user.setOpts(cfg)
+    vim.api.nvim_create_autocmd({ "CmdwinEnter"}, {
+        callback = function()
+            if cmdline == nil then loadPlugin(cfg) end
 
-    window.init(config.opts.window.offset)
-
-    binds.init(config, window)
-
-    local updateCmdline = util.debounce(
-        redrawCmdline,
-        config.opts.window.debounceMs
-    )
-
-    vim.api.nvim_create_autocmd({ "CmdwinEnter" }, {
-        callback = function() stopListening() end
+            cmdline.onCmdwinEnter()
+        end
     })
 
     vim.api.nvim_create_autocmd({ "CmdlineEnter" }, {
         callback = function()
-            if string.find(config.opts.cmdtype, vim.v.event.cmdtype) then
-                binds.disabled = false
+            if cmdline == nil then loadPlugin(cfg) end
 
-                updateCmdline()
-                util.setCmdlineCallback(updateCmdline)
-            else
-                binds.disabled = true
-            end
+            cmdline.onCmdlineEnter()
         end
     })
 
     vim.api.nvim_create_autocmd({ "CmdlineLeave" }, {
         callback = function()
-            if string.find(config.opts.cmdtype, vim.v.event.cmdtype) then
-                binds.disabled = false
-                stopListening()
-            else
-                binds.disabled = true
-            end
+            if cmdline == nil then loadPlugin(cfg) end
+
+            cmdline.onCmdlineLeave()
         end
     })
 
-    vim.api.nvim_create_autocmd({ "WinLeave" }, {
+    vim.api.nvim_create_autocmd({ "WinLeave", "VimLeavePre" }, {
         callback = function()
-            if vim.api.nvim_buf_is_valid(window.buffer) then
-                vim.api.nvim_buf_delete(window.buffer, {})
-            end
-        end
-    })
+            if cmdline == nil then loadPlugin(cfg) end
 
-    vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
-        callback = function()
-            if vim.api.nvim_buf_is_valid(window.buffer) then
-                vim.api.nvim_buf_delete(window.buffer, {})
-            end
+            cmdline.onWinLeave()
         end
     })
 end
 
-return {
-    cfg = config,
-    setup = setup
-}
+return { setup = setup }
